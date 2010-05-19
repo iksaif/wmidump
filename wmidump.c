@@ -255,9 +255,10 @@ static void *read_wdg(int fd, size_t *len)
 	*len = 0;
 
 	while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
+		size_t offset = *len;
 		*len += bytes;
 		data = realloc(data, *len);
-		memcpy(data, buf, bytes);
+		memcpy(data + offset, buf, bytes);
 	}
 	if (bytes < 0) {
 		perror("read()");
