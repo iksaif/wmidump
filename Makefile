@@ -7,7 +7,7 @@ SRCS	= wmidump.c
 OBJS	=	$(SRCS:.c=.o)
 
 CFLAGS	?= -O2 -ggdb3
-CFLAGS	+= -Wall -W -pedantic -std=gnu99
+CFLAGS	+= -Wall -W -std=gnu99
 CFLAGS	+= -D_GNU_SOURCE
 
 .PHONY		:	all clean distclean
