@@ -60,97 +60,6 @@ struct guid_block {
 	uint8_t flags;
 };
 
-/**
- * wmi_parse_hexbyte - Convert a ASCII hex number to a byte
- * @src:  Pointer to at least 2 characters to convert.
- *
- * Convert a two character ASCII hex string to a number.
- *
- * Return:  0-255  Success, the byte was parsed correctly
- *          -1     Error, an invalid character was supplied
- */
-static int wmi_parse_hexbyte(const uint8_t *src)
-{
-	unsigned int x; /* For correct wrapping */
-	int h;
-
-	/* high part */
-	x = src[0];
-	if (x - '0' <= '9' - '0') {
-		h = x - '0';
-	} else if (x - 'a' <= 'f' - 'a') {
-		h = x - 'a' + 10;
-	} else if (x - 'A' <= 'F' - 'A') {
-		h = x - 'A' + 10;
-	} else {
-		return -1;
-	}
-	h <<= 4;
-
-	/* low part */
-	x = src[1];
-	if (x - '0' <= '9' - '0')
-		return h | (x - '0');
-	if (x - 'a' <= 'f' - 'a')
-		return h | (x - 'a' + 10);
-	if (x - 'A' <= 'F' - 'A')
-		return h | (x - 'A' + 10);
-	return -1;
-}
-
-/**
- * wmi_swap_bytes - Rearrange GUID bytes to match GUID binary
- * @src:   Memory block holding binary GUID (16 bytes)
- * @dest:  Memory block to hold byte swapped binary GUID (16 bytes)
- *
- * Byte swap a binary GUID to match it's real GUID value
- */
-static void wmi_swap_bytes(uint8_t *src, uint8_t *dest)
-{
-	int i;
-
-	for (i = 0; i <= 3; i++)
-		memcpy(dest + i, src + (3 - i), 1);
-
-	for (i = 0; i <= 1; i++)
-		memcpy(dest + 4 + i, src + (5 - i), 1);
-
-	for (i = 0; i <= 1; i++)
-		memcpy(dest + 6 + i, src + (7 - i), 1);
-
-	memcpy(dest + 8, src + 8, 8);
-}
-
-/**
- * wmi_parse_guid - Convert GUID from ASCII to binary
- * @src:   36 char string of the form fa50ff2b-f2e8-45de-83fa-65417f2f49ba
- * @dest:  Memory block to hold binary GUID (16 bytes)
- *
- * N.B. The GUID need not be NULL terminated.
- *
- * Return:  'true'   @dest contains binary GUID
- *          'false'  @dest contents are undefined
- */
-static bool wmi_parse_guid(const uint8_t *src, uint8_t *dest)
-{
-	static const int size[] = { 4, 2, 2, 2, 6 };
-	int i, j, v;
-
-	if (src[8]  != '-' || src[13] != '-' ||
-		src[18] != '-' || src[23] != '-')
-		return false;
-
-	for (j = 0; j < 5; j++, src++) {
-		for (i = 0; i < size[j]; i++, src += 2, *dest++ = v) {
-			v = wmi_parse_hexbyte(src);
-			if (v < 0)
-				return false;
-		}
-	}
-
-	return true;
-}
-
 /*
  * Convert a raw GUID to the ACII string representation
  */
@@ -258,7 +167,7 @@ static void *read_wdg(int fd, size_t *len)
 		size_t offset = *len;
 		*len += bytes;
 		data = realloc(data, *len);
-		memcpy(data + offset, buf, bytes);
+		memcpy((uint8_t *)data + offset, buf, bytes);
 	}
 	if (bytes < 0) {
 		perror("read()");
@@ -270,7 +179,7 @@ static void *read_wdg(int fd, size_t *len)
 	return data;
 }
 
-int main(int argc, char *argv[])
+int main()
 {
 	size_t len;
 	void *data, *wdg;
