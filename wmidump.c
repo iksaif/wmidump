@@ -179,7 +179,7 @@ static void *read_wdg(int fd, size_t *len)
 	return data;
 }
 
-int main()
+int main(void)
 {
 	size_t len;
 	void *data, *wdg;
