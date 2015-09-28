@@ -52,3 +52,14 @@ Then run ./wmidump < file and it should output something like that:
             reserved: 4F
             instance_count: 1
             flags: 0
+
+## wmixtract.py
+
+wmixtract.py is a small python script to extract _WDG and WQXX buffers.
+Resulting _WDG files can be parsed with wmidump directly.
+WQXX buffers contain compiled MOF (Managed Object Format) and can be
+decompiled using the wmimofck.exe program available in Windows Driver Kit (WDK).
+
+references:
+* "Using Wmimofck.exe": http://msdn.microsoft.com/en-us/library/windows/hardware/ff565588(v=vs.85).aspx
+* "Windows Instrumentation: WMI and ACPI": http://msdn.microsoft.com/en-us/windows/hardware/gg463463
