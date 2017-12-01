@@ -201,26 +201,27 @@ static void *read_wdg(int fd, size_t *len)
 
 int main(void)
 {
+	void *data = NULL;
+	void *wdg = NULL;
 	size_t len;
-	void *data, *wdg;
 	int err = 0;
 
 	wdg = read_wdg(STDIN_FILENO, &len);
 	if (!wdg) {
-		err = -1;
-		goto exit;
+		err = 1;
+		goto done;
 	}
 
 	data = parse_ascii_wdg(wdg, &len);
 	if (!data) {
-		err = -1;
-		goto free_wdg;
+		err = 1;
+		goto done;
 	}
 
 	parse_wdg(data, len);
+
+done:
 	free(data);
-free_wdg:
 	free(wdg);
-exit:
 	return err;
 }
