@@ -1,0 +1,30 @@
+FCB424F1-075A-4E0E-BFC4-62F3E71771FA:
+	object_id: A7
+	notify_id: 41
+	reserved: 37
+	instance_count: 1
+	flags: 0x1 ACPI_WMI_EXPENSIVE(0x1) 
+E2BE5EE3-42DA-49DB-8378-1F5247388202:
+	object_id: A8
+	notify_id: 41
+	reserved: 38
+	instance_count: 1
+	flags: 0x2 ACPI_WMI_METHOD(0x2) 
+7430019A-DCE9-4548-BAB0-9FDE0935CAFF:
+	object_id: A9
+	notify_id: 41
+	reserved: 39
+	instance_count: 10
+	flags: 0x5 ACPI_WMI_EXPENSIVE(0x1) ACPI_WMI_STRING(0x4) 
+7FF47003-3B6C-4E5E-A227-E979824A85D1:
+	object_id: AA
+	notify_id: 41
+	reserved: 41
+	instance_count: 1
+	flags: 0x6 ACPI_WMI_METHOD(0x2) ACPI_WMI_STRING(0x4) 
+05901221-D566-11D1-B2F0-00A0C9062910:
+	object_id: BB
+	notify_id: 42
+	reserved: 42
+	instance_count: 1
+	flags: 0

@@ -21,8 +21,12 @@ $(NAME): $(OBJS) Makefile
 .c.o: $(HEADERS)
 	$(CC) $(INCDIRS) $(CFLAGS) -c $*.c
 
+test: all
+	${MAKE} -Ctests
+
 clean:
 	find . \( -name "*.o" -o -name "*~" -o -name "#*#" \) -exec rm {} \;
+	${MAKE} -Ctests clean
 
 distclean:	clean
 	rm -f $(NAME)
