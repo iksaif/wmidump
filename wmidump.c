@@ -92,33 +92,35 @@ static int wmi_gtoa(const char *in, char *out)
 /*
  * Parse the _WDG method for the GUID data blocks
  */
-static void parse_wdg(const void *data, size_t len)
+static void parse_wdg(const char *data, size_t len)
 {
-	const struct guid_block *gblock = data;
 	char guid_string[37];
-	uint32_t i, total;
+	union {
+		const char *s;
+		const struct guid_block *g;
+	} ptr;
+	const char *end;
 
-	total = len / sizeof(struct guid_block);
-
-	for (i = 0; i < total; i++) {
-		const struct guid_block *g = &gblock[i];
-
-		wmi_gtoa(g->guid, guid_string);
+	/* Round downwards to multiple of sizeof(struct guid_block). */
+	end = data + len - (len % sizeof(struct guid_block));
+	for (ptr.s = data; ptr.s < end; ptr.g++) {
+		wmi_gtoa(ptr.g->guid, guid_string);
 		printf("%s:\n", guid_string);
-		printf("\tobject_id: %c%c\n", g->object_id[0], g->object_id[1]);
-		printf("\tnotify_id: %02X\n", g->notify_id);
-		printf("\treserved: %02X\n", g->reserved);
-		printf("\tinstance_count: %d\n", g->instance_count);
-		printf("\tflags: %#x", g->flags);
-		if (g->flags) {
+		printf("\tobject_id: %c%c\n",
+		    ptr.g->object_id[0], ptr.g->object_id[1]);
+		printf("\tnotify_id: %02X\n", ptr.g->notify_id);
+		printf("\treserved: %02X\n", ptr.g->reserved);
+		printf("\tinstance_count: %d\n", ptr.g->instance_count);
+		printf("\tflags: %#x", ptr.g->flags);
+		if (ptr.g->flags) {
 			printf(" ");
-			if (g->flags & ACPI_WMI_EXPENSIVE)
+			if (ptr.g->flags & ACPI_WMI_EXPENSIVE)
 				printf("ACPI_WMI_EXPENSIVE ");
-			if (g->flags & ACPI_WMI_METHOD)
+			if (ptr.g->flags & ACPI_WMI_METHOD)
 				printf("ACPI_WMI_METHOD ");
-			if (g->flags & ACPI_WMI_STRING)
+			if (ptr.g->flags & ACPI_WMI_STRING)
 				printf("ACPI_WMI_STRING ");
-			if (g->flags & ACPI_WMI_EVENT)
+			if (ptr.g->flags & ACPI_WMI_EVENT)
 				printf("ACPI_WMI_EVENT ");
 		}
 		printf("\n");
