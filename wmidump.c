@@ -182,6 +182,8 @@ static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 		    (errno == ERANGE && (lval == LONG_MAX || lval == LONG_MIN)))
 			errx(1, "<stdin>:%ld:%ld: invalid hex number",
 			    lno, cno);
+		if (*end == '\0')
+			end--;
 		wdg += end - wdg;
 
 		(*bytes)++;
