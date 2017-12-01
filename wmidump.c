@@ -160,6 +160,10 @@ static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 			continue;
 		if (!isalnum(*wdg))
 			continue;
+		if (wdg[0] != '0' || wdg[1] != 'x')
+			errx(1, "<stdin>:%ld:%ld: expected hex prefix, "
+			    "got `%c%c'",
+			    lno, cno, wdg[0], wdg[1]);
 
 		errno = 0;
 		lval = strtol(wdg, &end, 16);
