@@ -128,7 +128,7 @@ static void parse_wdg(const void *data, size_t len)
 
 static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
-	char *p = (char *)wdg;
+	char *end;
 	char *data = NULL;
 	long lval;
 	size_t lno = 1;
@@ -137,27 +137,27 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 
 	*bytes = 0;
 
-	for (; *p; p++) {
-		if (*p == '\n') {
+	for (; *wdg; wdg++) {
+		if (*wdg == '\n') {
 			lno++;
 			cno = 1;
 		} else {
 			cno++;
 		}
 
-		if (p[0] == '/' && p[1] == '*') {
+		if (wdg[0] == '/' && wdg[1] == '*') {
 			comment++;
-			p++;
+			wdg++;
 			continue;
 		}
-		if (p[0] == '*' && p[1] == '/') {
+		if (wdg[0] == '*' && wdg[1] == '/') {
 			comment--;
-			p++;
+			wdg++;
 			continue;
 		}
 		if (comment)
 			continue;
-		if (!isalnum(*p))
+		if (!isalnum(*wdg))
 			continue;
 
 		errno = 0;
@@ -166,6 +166,7 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 		    (errno == ERANGE && (lval == LONG_MAX || lval == LONG_MIN)))
 			errx(1, "<stdin>:%ld:%ld: invalid hex number",
 			    lno, cno);
+		wdg += end - wdg;
 
 		(*bytes)++;
 		data = realloc(data, *bytes);
