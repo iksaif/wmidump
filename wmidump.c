@@ -36,7 +36,9 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
-
+#include <err.h>
+#include <errno.h>
+#include <limits.h>
 
 /*
  * If the GUID data block is marked as expensive, we must enable and
@@ -129,6 +131,7 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 	static int comment = 0;
 	char *p = (char *)wdg;
 	char *data = NULL;
+	long lval;
 	size_t lno = 1;
 	size_t cno = 1;
 
@@ -156,10 +159,17 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 			continue;
 		if (!isalnum(*p))
 			continue;
-		char c = strtol(p, &p, 16);
+
+		errno = 0;
+		lval = strtol(wdg, &end, 16);
+		if (lval < 0 || lval > UCHAR_MAX ||
+		    (errno == ERANGE && (lval == LONG_MAX || lval == LONG_MIN)))
+			errx(1, "<stdin>:%ld:%ld: invalid hex number",
+			    lno, cno);
+
 		(*bytes)++;
 		data = realloc(data, *bytes);
-		data[(*bytes) - 1] = c;
+		data[(*bytes) - 1] = lval;
 	}
 	return data;
 }
