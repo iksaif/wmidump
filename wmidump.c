@@ -175,19 +175,20 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 	return data;
 }
 
-static void *read_wdg(int fd, size_t *len)
+static char *read_wdg(int fd, size_t *len)
 {
-	void *data = NULL;
 	char buf[1024];
+	char *data = NULL;
 	ssize_t bytes;
 
 	*len = 0;
 
 	while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
-		size_t offset = *len;
+		data = realloc(data, *len + bytes);
+		if (data == NULL)
+			err(1, NULL);
+		memcpy(data + *len, buf, bytes);
 		*len += bytes;
-		data = realloc(data, *len);
-		memcpy((uint8_t *)data + offset, buf, bytes);
 	}
 	if (bytes < 0) {
 		perror("read()");
@@ -195,14 +196,16 @@ static void *read_wdg(int fd, size_t *len)
 		return NULL;
 	}
 	data = realloc(data, (*len) + 1);
-	((char *)data)[*len] = '\0';
+	if (data == NULL)
+		err(1, NULL);
+	data[*len] = '\0';
 	return data;
 }
 
 int main(void)
 {
-	void *data = NULL;
-	void *wdg = NULL;
+	char *data = NULL;
+	char *wdg = NULL;
 	size_t len;
 	int err = 0;
 
