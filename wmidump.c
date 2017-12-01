@@ -170,6 +170,8 @@ static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 
 		(*bytes)++;
 		data = realloc(data, *bytes);
+		if (data == NULL)
+			err(1, NULL);
 		data[(*bytes) - 1] = lval;
 	}
 	return data;
