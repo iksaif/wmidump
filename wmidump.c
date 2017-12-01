@@ -146,6 +146,7 @@ static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 			cno++;
 		}
 
+		/* Handle multiline comments */
 		if (wdg[0] == '/' && wdg[1] == '*') {
 			comment++;
 			wdg++;
@@ -158,6 +159,16 @@ static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 		}
 		if (comment)
 			continue;
+
+		/* Handle trailing comments. */
+		if (wdg[0] == '/' && wdg[1] == '/') {
+			for (wdg += 2; *wdg != '\n' && *wdg != '\0'; wdg++)
+				continue;
+			if (*wdg == '\0')
+				break;
+			continue;
+		}
+
 		if (!isalnum(*wdg))
 			continue;
 		if (wdg[0] != '0' || wdg[1] != 'x')
