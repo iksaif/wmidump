@@ -128,12 +128,12 @@ static void parse_wdg(const void *data, size_t len)
 
 static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
-	static int comment = 0;
 	char *p = (char *)wdg;
 	char *data = NULL;
 	long lval;
 	size_t lno = 1;
 	size_t cno = 1;
+	int comment = 0;
 
 	*bytes = 0;
 
