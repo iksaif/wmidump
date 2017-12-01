@@ -126,7 +126,7 @@ static void parse_wdg(const void *data, size_t len)
 	}
 }
 
-static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
+static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
 	char *end;
 	char *data = NULL;
