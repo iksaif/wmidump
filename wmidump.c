@@ -115,13 +115,17 @@ static void parse_wdg(const char *data, size_t len)
 		if (ptr.g->flags) {
 			printf(" ");
 			if (ptr.g->flags & ACPI_WMI_EXPENSIVE)
-				printf("ACPI_WMI_EXPENSIVE ");
+				printf("ACPI_WMI_EXPENSIVE(%#x) ",
+				    ACPI_WMI_EXPENSIVE);
 			if (ptr.g->flags & ACPI_WMI_METHOD)
-				printf("ACPI_WMI_METHOD ");
+				printf("ACPI_WMI_METHOD(%#x) ",
+				    ACPI_WMI_METHOD);
 			if (ptr.g->flags & ACPI_WMI_STRING)
-				printf("ACPI_WMI_STRING ");
+				printf("ACPI_WMI_STRING(%#x) ",
+				    ACPI_WMI_STRING);
 			if (ptr.g->flags & ACPI_WMI_EVENT)
-				printf("ACPI_WMI_EVENT ");
+				printf("ACPI_WMI_EVENT(%#x) ",
+				    ACPI_WMI_EVENT);
 		}
 		printf("\n");
 	}
