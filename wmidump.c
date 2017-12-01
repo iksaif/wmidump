@@ -129,10 +129,19 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 	static int comment = 0;
 	char *p = (char *)wdg;
 	char *data = NULL;
+	size_t lno = 1;
+	size_t cno = 1;
 
 	*bytes = 0;
 
 	for (; *p; p++) {
+		if (*p == '\n') {
+			lno++;
+			cno = 1;
+		} else {
+			cno++;
+		}
+
 		if (p[0] == '/' && p[1] == '*') {
 			comment++;
 			p++;
