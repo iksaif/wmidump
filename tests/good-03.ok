@@ -1,0 +1,18 @@
+8F4D3679-749E-4479-9B16-C62601FD25F0:
+	object_id: AB
+	notify_id: 41
+	reserved: 42
+	instance_count: 1
+	flags: 0x2 ACPI_WMI_METHOD(0x2) 
+85D2E869-365A-4ACE-A4D3-CD692B1698A0:
+	object_id: AC
+	notify_id: 41
+	reserved: 43
+	instance_count: 1
+	flags: 0x2 ACPI_WMI_METHOD(0x2) 
+05901221-D566-11D1-B2F0-00A0C9062910:
+	object_id: BC
+	notify_id: 42
+	reserved: 43
+	instance_count: 1
+	flags: 0

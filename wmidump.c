@@ -28,15 +28,15 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
-#include <stdio.h>
+#include <ctype.h>
+#include <err.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include <ctype.h>
 #include <unistd.h>
-#include <sys/types.h>
-
 
 /*
  * If the GUID data block is marked as expensive, we must enable and
@@ -84,90 +84,134 @@ static int wmi_gtoa(const char *in, char *out)
 	for (i = 10; i <= 15; i++)
 		out += sprintf(out, "%02X", in[i] & 0xFF);
 
-	out = '\0';
+	*out = '\0';
 	return 0;
 }
 
 /*
  * Parse the _WDG method for the GUID data blocks
  */
-static void parse_wdg(const void *data, size_t len)
+static void parse_wdg(const char *data, size_t len)
 {
-	const struct guid_block *gblock = data;
 	char guid_string[37];
-	uint32_t i, total;
+	union {
+		const char *s;
+		const struct guid_block *g;
+	} ptr;
+	const char *end;
 
-	total = len / sizeof(struct guid_block);
-
-	for (i = 0; i < total; i++) {
-		const struct guid_block *g = &gblock[i];
-
-		wmi_gtoa(g->guid, guid_string);
+	/* Round downwards to multiple of sizeof(struct guid_block). */
+	end = data + len - (len % sizeof(struct guid_block));
+	for (ptr.s = data; ptr.s < end; ptr.g++) {
+		wmi_gtoa(ptr.g->guid, guid_string);
 		printf("%s:\n", guid_string);
-		printf("\tobject_id: %c%c\n", g->object_id[0], g->object_id[1]);
-		printf("\tnotify_id: %02X\n", g->notify_id);
-		printf("\treserved: %02X\n", g->reserved);
-		printf("\tinstance_count: %d\n", g->instance_count);
-		printf("\tflags: %#x", g->flags);
-		if (g->flags) {
+		printf("\tobject_id: %c%c\n",
+		    ptr.g->object_id[0], ptr.g->object_id[1]);
+		printf("\tnotify_id: %02X\n", ptr.g->notify_id);
+		printf("\treserved: %02X\n", ptr.g->reserved);
+		printf("\tinstance_count: %d\n", ptr.g->instance_count);
+		printf("\tflags: %#x", ptr.g->flags);
+		if (ptr.g->flags) {
 			printf(" ");
-			if (g->flags & ACPI_WMI_EXPENSIVE)
-				printf("ACPI_WMI_EXPENSIVE ");
-			if (g->flags & ACPI_WMI_METHOD)
-				printf("ACPI_WMI_METHOD ");
-			if (g->flags & ACPI_WMI_STRING)
-				printf("ACPI_WMI_STRING ");
-			if (g->flags & ACPI_WMI_EVENT)
-				printf("ACPI_WMI_EVENT ");
+			if (ptr.g->flags & ACPI_WMI_EXPENSIVE)
+				printf("ACPI_WMI_EXPENSIVE(%#x) ",
+				    ACPI_WMI_EXPENSIVE);
+			if (ptr.g->flags & ACPI_WMI_METHOD)
+				printf("ACPI_WMI_METHOD(%#x) ",
+				    ACPI_WMI_METHOD);
+			if (ptr.g->flags & ACPI_WMI_STRING)
+				printf("ACPI_WMI_STRING(%#x) ",
+				    ACPI_WMI_STRING);
+			if (ptr.g->flags & ACPI_WMI_EVENT)
+				printf("ACPI_WMI_EVENT(%#x) ",
+				    ACPI_WMI_EVENT);
 		}
 		printf("\n");
 	}
 }
 
-static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
+static char *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
-	static int comment = 0;
-	char *p = (char *)wdg;
+	char *end;
 	char *data = NULL;
+	long lval;
+	size_t lno = 1;
+	size_t cno = 1;
+	int comment = 0;
 
 	*bytes = 0;
 
-	for (; *p; p++) {
-		if (p[0] == '/' && p[1] == '*') {
+	for (; *wdg; wdg++) {
+		if (*wdg == '\n') {
+			lno++;
+			cno = 1;
+		} else {
+			cno++;
+		}
+
+		/* Handle multiline comments */
+		if (wdg[0] == '/' && wdg[1] == '*') {
 			comment++;
-			p++;
+			wdg++;
 			continue;
 		}
-		if (p[0] == '*' && p[1] == '/') {
+		if (wdg[0] == '*' && wdg[1] == '/') {
 			comment--;
-			p++;
+			wdg++;
 			continue;
 		}
 		if (comment)
 			continue;
-		if (!isalnum(*p))
+
+		/* Handle trailing comments. */
+		if (wdg[0] == '/' && wdg[1] == '/') {
+			for (wdg += 2; *wdg != '\n' && *wdg != '\0'; wdg++)
+				continue;
+			if (*wdg == '\0')
+				break;
 			continue;
-		char c = strtol(p, &p, 16);
+		}
+
+		if (!isalnum(*wdg))
+			continue;
+		if (wdg[0] != '0' || wdg[1] != 'x')
+			errx(1, "<stdin>:%ld:%ld: expected hex prefix, "
+			    "got `%c%c'",
+			    lno, cno, wdg[0], wdg[1]);
+
+		errno = 0;
+		lval = strtol(wdg, &end, 16);
+		if (lval < 0 || lval > UCHAR_MAX ||
+		    (errno == ERANGE && (lval == LONG_MAX || lval == LONG_MIN)))
+			errx(1, "<stdin>:%ld:%ld: invalid hex number",
+			    lno, cno);
+		if (*end == '\0')
+			end--;
+		wdg += end - wdg;
+
 		(*bytes)++;
 		data = realloc(data, *bytes);
-		data[(*bytes) - 1] = c;
+		if (data == NULL)
+			err(1, NULL);
+		data[(*bytes) - 1] = lval;
 	}
 	return data;
 }
 
-static void *read_wdg(int fd, size_t *len)
+static char *read_wdg(int fd, size_t *len)
 {
-	void *data = NULL;
 	char buf[1024];
+	char *data = NULL;
 	ssize_t bytes;
 
 	*len = 0;
 
 	while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
-		size_t offset = *len;
+		data = realloc(data, *len + bytes);
+		if (data == NULL)
+			err(1, NULL);
+		memcpy(data + *len, buf, bytes);
 		*len += bytes;
-		data = realloc(data, *len);
-		memcpy((uint8_t *)data + offset, buf, bytes);
 	}
 	if (bytes < 0) {
 		perror("read()");
@@ -175,32 +219,35 @@ static void *read_wdg(int fd, size_t *len)
 		return NULL;
 	}
 	data = realloc(data, (*len) + 1);
-	((char *)data)[*len] = '\0';
+	if (data == NULL)
+		err(1, NULL);
+	data[*len] = '\0';
 	return data;
 }
 
 int main(void)
 {
+	char *data = NULL;
+	char *wdg = NULL;
 	size_t len;
-	void *data, *wdg;
 	int err = 0;
 
 	wdg = read_wdg(STDIN_FILENO, &len);
 	if (!wdg) {
-		err = -1;
-		goto exit;
+		err = 1;
+		goto done;
 	}
 
 	data = parse_ascii_wdg(wdg, &len);
 	if (!data) {
-		err = -1;
-		goto free_wdg;
+		err = 1;
+		goto done;
 	}
 
 	parse_wdg(data, len);
+
+done:
 	free(data);
-free_wdg:
 	free(wdg);
-exit:
 	return err;
 }
