@@ -104,9 +104,10 @@ static void parse_wdg(const void *data, size_t len)
 
 		wmi_gtoa(g->guid, guid_string);
 		printf("%s:\n", guid_string);
-		printf("\tobject_id: %c%c\n", g->object_id[0], g->object_id[1]);
-		printf("\tnotify_id: %02X\n", g->notify_id);
-		printf("\treserved: %02X\n", g->reserved);
+		if (g->flags & ACPI_WMI_EVENT)
+			printf("\tnotify_id: 0x%02X\n", g->notify_id);
+		else
+			printf("\tobject_id: %c%c\n", g->object_id[0], g->object_id[1]);
 		printf("\tinstance_count: %d\n", g->instance_count);
 		printf("\tflags: %#x", g->flags);
 		if (g->flags) {
