@@ -126,16 +126,22 @@ static void parse_wdg(const void *data, size_t len)
 
 static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
-	static int comment = 0;
+	static int comment = 0, newline_comment = 0;
 	char *p = (char *)wdg;
 	char *data = NULL;
 
 	*bytes = 0;
 
 	for (; *p; p++) {
-		if (p[0] == '/' && p[1] == '*') {
-			comment++;
-			p++;
+		if (p[0] == '/') {
+			if (p[1] == '*') {
+				comment++;
+				p++;
+			}
+			else if (p[1] == '/') {
+				newline_comment++;
+				p++;
+			}
 			continue;
 		}
 		if (p[0] == '*' && p[1] == '/') {
@@ -143,7 +149,11 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 			p++;
 			continue;
 		}
-		if (comment)
+		if (p[0] == '\n' && newline_comment) {
+			newline_comment = 0;
+			continue;
+		}
+		if (comment || newline_comment)
 			continue;
 		if (!isalnum(*p))
 			continue;
