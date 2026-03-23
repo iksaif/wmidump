@@ -1,29 +1,34 @@
-NAME	= wmidump
+NAME     = wmidump
+CC      ?= gcc
+SRCS     = wmidump.c
+OBJS     = $(SRCS:.c=.o)
 
-CC	= gcc
+CFLAGS  ?= -O2 -g
+CFLAGS  += -Wall -Wextra -std=c17 -pedantic
+CFLAGS  += -D_GNU_SOURCE
 
-SRCS	= wmidump.c
+PREFIX  ?= /usr/local
+BINDIR  ?= $(PREFIX)/bin
 
-OBJS	=	$(SRCS:.c=.o)
-
-CFLAGS	?= -O2 -ggdb3
-CFLAGS	+= -Wall -W -std=gnu99
-CFLAGS	+= -D_GNU_SOURCE
-
-.PHONY		:	all clean distclean
-.SUFFIXES	:	.c .o
+.PHONY: all clean install uninstall test
 
 all: $(NAME)
 
-$(NAME): $(OBJS) Makefile
-	$(CC) $(CFLAGS) $(LDLIBS) -o $(NAME) $(OBJS) $(LFLAGS)
+$(NAME): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-.c.o: $(HEADERS)
-	$(CC) $(INCDIRS) $(CFLAGS) -c $*.c
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+install: $(NAME)
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 755 $(NAME) $(DESTDIR)$(BINDIR)/$(NAME)
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(NAME)
+
+test: $(NAME)
+	@./test.sh
 
 clean:
-	find . \( -name "*.o" -o -name "*~" -o -name "#*#" \) -exec rm {} \;
-
-distclean:	clean
-	rm -f $(NAME)
-
+	rm -f $(OBJS) $(NAME)

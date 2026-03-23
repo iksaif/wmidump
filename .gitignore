@@ -1,2 +1,7 @@
 /wmidump
-/wmidump.o
+*.o
+*~
+\#*#
+*.bin
+__pycache__/
+*.pyc

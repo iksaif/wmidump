@@ -1,58 +1,70 @@
-import sys
+#!/usr/bin/env python3
+"""Extract _WDG and WQXX buffers from decompiled ACPI DSDT .dsl files."""
+
 import re
+import sys
+from pathlib import Path
 
-files = {}
+file_counts: dict[str, int] = {}
 
-def dump_file(buf):
-    name = buf['name']
 
-    if name not in files:
-        files[name] = 0
+def dump_file(buf: dict[str, str | list[str]]) -> None:
+    name = str(buf["name"])
+
+    if name not in file_counts:
+        file_counts[name] = 0
     else:
-        files[name] += 1
-        name = name + str(files[name])
+        file_counts[name] += 1
+        name = f"{name}{file_counts[name]}"
 
-    print ("Writing %s in %s and %s.bin" % (buf['name'], name, name))
+    print(f"Writing {buf['name']} to {name} and {name}.bin")
 
-    fp = open(name, "w")
-    fp.write(",".join(buf['data']))
+    data = buf["data"]
+    assert isinstance(data, list)
 
-    fp = open(name + ".bin", "w")
-    for byte in buf['data']:
-        byte = byte.strip()
-        if byte:
-            fp.write(chr(int(byte, 16)))
+    Path(name).write_text(",".join(data))
 
-def find_buffer(name, data):
-    pattern = r"Name\s*\((%s),\s*Buffer\s*\(((0x)?[\dA-Fa-f]+)\)\s*{(.*?)}\s*\)" % name
+    with Path(f"{name}.bin").open("wb") as fp:
+        for byte in data:
+            byte = byte.strip()
+            if byte:
+                fp.write(bytes([int(byte, 16)]))
+
+
+def find_buffer(name: str, data: str):
+    pattern = (
+        r"Name\s*\((%s),\s*Buffer\s*\(((0x)?[\dA-Fa-f]+)\)\s*\{(.*?)\}\s*\)"
+        % name
+    )
 
     for group in re.findall(pattern, data, re.DOTALL):
-        buf = {}
-        buf['name'] = group[0]
-        buf['size'] = group[1]
-        buf['data'] = group[3]
+        buf: dict[str, str | list[str]] = {
+            "name": group[0],
+            "size": group[1],
+        }
 
-        buf['data'] = re.sub(r"\s*/\*.*?\*/\s*", "", buf['data'])
-        buf['data'] = re.split("\s*,\s*|\s*", buf['data'])
+        cleaned = re.sub(r"\s*/\*.*?\*/\s*", "", group[3])
+        buf["data"] = re.split(r"\s*,\s*|\s+", cleaned)
 
         yield buf
 
-def main():
+
+def main() -> int:
     if len(sys.argv) >= 2:
-        if sys.argv[1] == '--help':
-            print ('Usage: %s DSDT.dsl' % sys.argv[0])
+        if sys.argv[1] == "--help":
+            print(f"Usage: {sys.argv[0]} [DSDT.dsl]")
             return 0
-        stdin = open(sys.argv[1])
+        source = Path(sys.argv[1]).read_text()
     else:
-        stdin = sys.stdin
+        source = sys.stdin.read()
 
-    data = stdin.read()
-
-    for buf in find_buffer("_WDG", data):
+    for buf in find_buffer("_WDG", source):
         dump_file(buf)
-    for buf in find_buffer("WQ[A-Z]{2}", data):
+    for buf in find_buffer(r"WQ[A-Z]{2}", source):
         dump_file(buf)
 
-if __name__ == '__main__':
-    ret = main()
-    sys.exit(ret)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

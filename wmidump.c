@@ -35,12 +35,10 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <sys/types.h>
-
 
 /*
  * If the GUID data block is marked as expensive, we must enable and
- * explicitily disable data collection.
+ * explicitly disable data collection.
  */
 #define ACPI_WMI_EXPENSIVE   0x1
 #define ACPI_WMI_METHOD      0x2	/* GUID is a method */
@@ -60,9 +58,6 @@ struct guid_block {
 	uint8_t flags;
 };
 
-/*
- * Convert a raw GUID to the ACII string representation
- */
 static int wmi_gtoa(const char *in, char *out)
 {
 	int i;
@@ -84,13 +79,10 @@ static int wmi_gtoa(const char *in, char *out)
 	for (i = 10; i <= 15; i++)
 		out += sprintf(out, "%02X", in[i] & 0xFF);
 
-	out = '\0';
+	*out = '\0';
 	return 0;
 }
 
-/*
- * Parse the _WDG method for the GUID data blocks
- */
 static void parse_wdg(const void *data, size_t len)
 {
 	const struct guid_block *gblock = data;
@@ -110,57 +102,64 @@ static void parse_wdg(const void *data, size_t len)
 			printf("\tobject_id: %c%c\n", g->object_id[0], g->object_id[1]);
 		printf("\tinstance_count: %d\n", g->instance_count);
 		printf("\tflags: %#x", g->flags);
-		if (g->flags) {
-			printf(" ");
-			if (g->flags & ACPI_WMI_EXPENSIVE)
-				printf("ACPI_WMI_EXPENSIVE ");
-			if (g->flags & ACPI_WMI_METHOD)
-				printf("ACPI_WMI_METHOD ");
-			if (g->flags & ACPI_WMI_STRING)
-				printf("ACPI_WMI_STRING ");
-			if (g->flags & ACPI_WMI_EVENT)
-				printf("ACPI_WMI_EVENT ");
-		}
+		if (g->flags & ACPI_WMI_EXPENSIVE)
+			printf(" ACPI_WMI_EXPENSIVE");
+		if (g->flags & ACPI_WMI_METHOD)
+			printf(" ACPI_WMI_METHOD");
+		if (g->flags & ACPI_WMI_STRING)
+			printf(" ACPI_WMI_STRING");
+		if (g->flags & ACPI_WMI_EVENT)
+			printf(" ACPI_WMI_EVENT");
 		printf("\n");
 	}
 }
 
 static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 {
-	static int comment = 0, newline_comment = 0;
-	char *p = (char *)wdg;
+	bool in_block_comment = false;
+	bool in_line_comment = false;
+	const char *p = wdg;
 	char *data = NULL;
 
 	*bytes = 0;
 
 	for (; *p; p++) {
-		if (p[0] == '/') {
+		if (!in_block_comment && !in_line_comment && p[0] == '/') {
 			if (p[1] == '*') {
-				comment++;
+				in_block_comment = true;
 				p++;
+				continue;
 			}
-			else if (p[1] == '/') {
-				newline_comment++;
+			if (p[1] == '/') {
+				in_line_comment = true;
 				p++;
+				continue;
 			}
-			continue;
 		}
-		if (p[0] == '*' && p[1] == '/') {
-			comment--;
+		if (in_block_comment && p[0] == '*' && p[1] == '/') {
+			in_block_comment = false;
 			p++;
 			continue;
 		}
-		if (p[0] == '\n' && newline_comment) {
-			newline_comment = 0;
+		if (in_line_comment && p[0] == '\n') {
+			in_line_comment = false;
 			continue;
 		}
-		if (comment || newline_comment)
+		if (in_block_comment || in_line_comment)
 			continue;
-		if (!isalnum(*p))
+		if (!isalnum((unsigned char)*p))
 			continue;
-		char c = strtol(p, &p, 16);
+
+		char *end;
+		char c = (char)strtol(p, &end, 16);
+		p = end - 1;
 		(*bytes)++;
 		data = realloc(data, *bytes);
+		if (!data) {
+			perror("realloc");
+			*bytes = 0;
+			return NULL;
+		}
 		data[(*bytes) - 1] = c;
 	}
 	return data;
@@ -169,23 +168,31 @@ static void *parse_ascii_wdg(const char *wdg, size_t *bytes)
 static void *read_wdg(int fd, size_t *len)
 {
 	void *data = NULL;
-	char buf[1024];
-	ssize_t bytes;
+	char buf[4096];
+	ssize_t nr;
 
 	*len = 0;
 
-	while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
+	while ((nr = read(fd, buf, sizeof(buf))) > 0) {
 		size_t offset = *len;
-		*len += bytes;
-		data = realloc(data, *len);
-		memcpy((uint8_t *)data + offset, buf, bytes);
+		*len += nr;
+		data = realloc(data, *len + 1);
+		if (!data) {
+			perror("realloc");
+			return NULL;
+		}
+		memcpy((uint8_t *)data + offset, buf, nr);
 	}
-	if (bytes < 0) {
-		perror("read()");
+	if (nr < 0) {
+		perror("read");
 		free(data);
 		return NULL;
 	}
-	data = realloc(data, (*len) + 1);
+	if (!data) {
+		data = malloc(1);
+		if (!data)
+			return NULL;
+	}
 	((char *)data)[*len] = '\0';
 	return data;
 }
@@ -198,13 +205,13 @@ int main(void)
 
 	wdg = read_wdg(STDIN_FILENO, &len);
 	if (!wdg) {
-		err = -1;
+		err = 1;
 		goto exit;
 	}
 
 	data = parse_ascii_wdg(wdg, &len);
 	if (!data) {
-		err = -1;
+		err = 1;
 		goto free_wdg;
 	}
 

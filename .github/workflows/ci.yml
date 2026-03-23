@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make CC=${{ matrix.cc }}
+
+      - name: Test
+        run: make test
+
+      - name: Build with sanitizers
+        run: make clean && make CC=${{ matrix.cc }} CFLAGS="-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -std=c17 -pedantic -D_GNU_SOURCE"
+
+      - name: Test with sanitizers
+        run: make test
+
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install linters
+        run: pip install flake8 mypy
+
+      - name: Flake8
+        run: flake8 wmixtract.py
+
+      - name: Mypy
+        run: mypy --ignore-missing-imports wmixtract.py
